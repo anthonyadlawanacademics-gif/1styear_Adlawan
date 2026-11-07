@@ -3,6 +3,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -21,6 +22,7 @@ struct Player {
     int vy;
     bool onGround;
     int dir;
+    int lives;
 };
 
 struct Platform {
@@ -34,6 +36,15 @@ struct Coin {
     int x;
     int y;
     bool collected;
+};
+
+struct Enemy {
+    int x;
+    int y;
+    int minX;
+    int maxX;
+    int vx;
+    bool alive;
 };
 
 static bool kbhit() {
@@ -64,6 +75,51 @@ static char readch() {
 #endif
 }
 
+static void setupLevel(int level, vector<Platform> &platforms, vector<Coin> &coins, vector<Enemy> &enemies, Player &player) {
+    if (level == 1) {
+        platforms = {
+            {0, 16, 40, 1},
+            {4, 12, 8, 1},
+            {16, 10, 7, 1},
+            {28, 13, 6, 1},
+            {32, 8, 5, 1}
+        };
+        coins = {
+            {6, 11, false},
+            {19, 9, false},
+            {31, 12, false},
+            {35, 7, false}
+        };
+        enemies = {
+            {12, 15, 5, 18, 1, true},
+            {30, 15, 24, 38, -1, true}
+        };
+        player = {1, 14, 0, 0, true, 1, player.lives};
+    } else if (level == 2) {
+        platforms = {
+            {0, 16, 40, 1},
+            {2, 13, 6, 1},
+            {10, 11, 7, 1},
+            {19, 9, 8, 1},
+            {30, 12, 7, 1},
+            {33, 7, 5, 1}
+        };
+        coins = {
+            {4, 12, false},
+            {13, 10, false},
+            {22, 8, false},
+            {32, 11, false},
+            {35, 6, false}
+        };
+        enemies = {
+            {8, 15, 3, 14, 1, true},
+            {21, 15, 18, 35, -1, true},
+            {34, 15, 30, 38, 1, true}
+        };
+        player = {1, 14, 0, 0, true, 1, player.lives};
+    }
+}
+
 int main() {
     const int WIDTH = 40;
     const int HEIGHT = 18;
@@ -86,11 +142,16 @@ int main() {
         {31, 12, false},
         {35, 7, false}
     };
+    vector<Enemy> enemies;
 
     Player player{1, 14, 0, 0, true, 1};
     int score = 0;
+    int level = 1;
+    const int TOTAL_LEVELS = 2;
 
+    setupLevel(level, platforms, coins, enemies, player);
     bool running = true;
+
     while (running) {
         if (kbhit()) {
             char key = readch();
@@ -112,6 +173,15 @@ int main() {
 
         if (!kbhit()) {
             player.vx = 0;
+        }
+
+        for (auto &enemy : enemies) {
+            if (!enemy.alive) continue;
+            enemy.x += enemy.vx;
+            if (enemy.x <= enemy.minX || enemy.x >= enemy.maxX) {
+                enemy.vx *= -1;
+                enemy.x = min(max(enemy.x, enemy.minX), enemy.maxX);
+            }
         }
 
         player.vy += GRAVITY;
@@ -168,9 +238,15 @@ int main() {
             }
         }
 
+        for (const auto &enemy : enemies) {
+            if (enemy.alive) {
+                world[enemy.y][enemy.x] = 'E';
+            }
+        }
+
         world[player.y][player.x] = player.dir > 0 ? 'C' : 'c';
 
-        cout << "Score: " << score << "\n";
+        cout << "Level: " << level << " | Score: " << score << " | Lives: " << player.lives << "\n";
         for (int y = 0; y < HEIGHT; ++y) {
             cout << world[y] << "\n";
         }
